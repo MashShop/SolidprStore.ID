@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SPR Store | Top Up Robux</title>
+
+<style>
+body{
+font-family:Arial;
+margin:0;
+background:#0f172a;
+color:white;
+}
+
+header{
+padding:20px;
+background:#1e293b;
+display:flex;
+justify-content:space-between;
+}
+
+nav button{
+margin-right:10px;
+padding:8px 14px;
+border:none;
+border-radius:6px;
+cursor:pointer;
+}
+
+section{
+padding:25px;
+}
+
+.card{
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+max-width:500px;
+}
+
+input,select,textarea{
+width:100%;
+padding:8px;
+margin-top:5px;
+margin-bottom:12px;
+border-radius:6px;
+border:none;
+}
+
+button.buy{
+background:#22c55e;
+color:white;
+padding:10px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+width:100%;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid #334155;
+}
+
+.hidden{
+display:none;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>SPR Store</h2>
+<nav>
+<button onclick="showTab('shop')">Shop</button>
+<button onclick="showTab('orders')">Pesanan</button>
+</nav>
+</header>
+
+<section id="shop">
+
+<div class="card">
+<h3>Beli Robux</h3>
+
+<label>Username Roblox</label>
+<input id="username">
+
+<label>User ID</label>
+<input id="userid">
+
+<label>Nomor WhatsApp</label>
+<input id="phone" placeholder="08xxxx">
+
+<label>Pilih Produk</label>
+<select id="product">
+<option value="80 Robux">80 Robux</option>
+<option value="400 Robux">400 Robux</option>
+<option value="800 Robux">800 Robux</option>
+<option value="1700 Robux">1700 Robux</option>
+</select>
+
+<label>Jumlah</label>
+<input type="number" id="qty" value="1" min="1">
+
+<label>Catatan</label>
+<textarea id="note"></textarea>
+
+<button class="buy" onclick="submitOrder()">Buat Pesanan</button>
+
+</div>
+
+</section>
+
+<section id="orders" class="hidden">
+
+<h2>Daftar Pesanan</h2>
+
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Username</th>
+<th>Produk</th>
+<th>Jumlah</th>
+<th>WhatsApp</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody id="orderList"></tbody>
+</table>
+
+</section>
+
+<script>
+
+const WEBHOOK="PASTE_WEBHOOK_DISINI"
+
+const COOLDOWN=15000
+
+function showTab(tab){
+
+ document.getElementById('shop').classList.add('hidden')
+ document.getElementById('orders').classList.add('hidden')
+
+ document.getElementById(tab).classList.remove('hidden')
+
+}
+
+function clean(str){
+ return str.replace(/[<>]/g,'')
+}
+
+function generateID(){
+
+ const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+ let id="SPR"
+
+ for(let i=0;i<8;i++){
+ id+=chars[Math.floor(Math.random()*chars.length)]
+ }
+
+ return id
+
+}
+
+function canOrder(){
+
+ const last=localStorage.getItem("spr_last")
+
+ if(last && Date.now()-last < COOLDOWN){
+ alert("Tunggu sebentar sebelum order lagi")
+ return false
+ }
+
+ return true
+
+}
+
+function saveOrder(o){
+
+ let orders=JSON.parse(localStorage.getItem("spr_orders")||"[]")
+
+ orders.push(o)
+
+ localStorage.setItem("spr_orders",JSON.stringify(orders))
+
+ renderOrders()
+
+}
+
+function renderOrders(){
+
+ const list=document.getElementById("orderList")
+
+ const orders=JSON.parse(localStorage.getItem("spr_orders")||"[]")
+
+ list.innerHTML=""
+
+ orders.forEach(o=>{
+
+ list.innerHTML+=`
+
+<tr>
+<td>${o.id}</td>
+<td>${o.username}</td>
+<td>${o.product}</td>
+<td>${o.qty}</td>
+<td>${o.phone}</td>
+<td>Menunggu</td>
+</tr>
+
+`
+
+ })
+
+}
+
+async function sendWebhook(order){
+
+ await fetch(WEBHOOK,{
+
+ method:"POST",
+
+ headers:{"Content-Type":"application/json"},
+
+ body:JSON.stringify({
+
+ embeds:[{
+
+ title:"Pesanan Baru",
+
+ color:5763719,
+
+ fields:[
+
+ {name:"Order ID",value:order.id},
+
+ {name:"Username",value:order.username},
+
+ {name:"UserID",value:order.userid},
+
+ {name:"Produk",value:order.product},
+
+ {name:"Jumlah",value:String(order.qty)},
+
+ {name:"WhatsApp",value:order.phone},
+
+ {name:"Catatan",value:order.note||"-"},
+
+ {name:"Waktu",value:order.time}
+
+ ]
+
+ }]
+
+ })
+
+ })
+
+}
+
+function submitOrder(){
+
+ if(!canOrder()) return
+
+ const username=clean(document.getElementById("username").value)
+ const userid=clean(document.getElementById("userid").value)
+ const phone=clean(document.getElementById("phone").value)
+ const product=document.getElementById("product").value
+ const qty=document.getElementById("qty").value
+ const note=clean(document.getElementById("note").value)
+
+ if(!username || !userid || !phone){
+ alert("Lengkapi data")
+ return
+ }
+
+ const order={
+
+ id:generateID(),
+
+ username:username,
+
+ userid:userid,
+
+ phone:phone,
+
+ product:product,
+
+ qty:qty,
+
+ note:note,
+
+ time:new Date().toLocaleString()
+
+ }
+
+ localStorage.setItem("spr_last",Date.now())
+
+ saveOrder(order)
+
+ sendWebhook(order)
+
+ alert("Pesanan berhasil dibuat! ID: "+order.id)
+
+}
+
+renderOrders()
+
+</script>
+
+</body>
+</html>
